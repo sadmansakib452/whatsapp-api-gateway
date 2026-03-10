@@ -22,7 +22,16 @@ async function bootstrap() {
 
   app.setGlobalPrefix('api');
   app.enableCors();
-  app.use(helmet());
+  app.use(
+    helmet({
+      contentSecurityPolicy: {
+        useDefaults: true,
+        directives: {
+          'script-src': ["'self'", "'unsafe-inline'", 'https://cdn.jsdelivr.net'],
+        },
+      },
+    }),
+  );
   // Enable it, if special charactrers not encoding perfectly
   // app.use((req, res, next) => {
   //   // Only force content-type for specific API routes, not Swagger or assets

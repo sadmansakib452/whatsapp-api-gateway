@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>WhatsApp QR Viewer</title>
+    <link rel="icon" href="data:," />
+    <style>
+      :root {
+        color-scheme: light dark;
+      }
+      body {
+        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto,
+          Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+        max-width: 720px;
+        margin: 40px auto;
+        padding: 0 16px;
+        line-height: 1.45;
+      }
+      .row {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+      .badge {
+        font-size: 12px;
+        padding: 4px 10px;
+        border-radius: 999px;
+        border: 1px solid rgba(127, 127, 127, 0.35);
+      }
+      #qr {
+        margin-top: 16px;
+        width: 320px;
+        height: 320px;
+        display: grid;
+        place-items: center;
+        border-radius: 14px;
+        border: 1px dashed rgba(127, 127, 127, 0.45);
+      }
+      #qr canvas,
+      #qr img {
+        width: 300px;
+        height: 300px;
+      }
+      code {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+          "Liberation Mono", "Courier New", monospace;
+      }
+      .muted {
+        opacity: 0.8;
+      }
+      .error {
+        color: #b00020;
+      }
+    </style>
+  </head>
+  <body>
+    <h2>WhatsApp QR Viewer</h2>
+    <p class="muted">
+      This page connects to your backend Socket.IO namespace
+      <code>/whatsapp</code> and renders the QR code in real time.
+    </p>
+
+    <div class="row">
+      <div class="badge">Socket: <span id="socketStatus">connecting…</span></div>
+      <div class="badge">WhatsApp: <span id="waStatus">unknown</span></div>
+    </div>
+
+    <div id="qr">
+      <span class="muted">Waiting for QR…</span>
+    </div>
+
+    <p id="hint" class="muted">
+      If you don’t see a QR, ensure the backend is running and WhatsApp is not
+      already authenticated.
+    </p>
+
+    <p id="err" class="error"></p>
+
+    <!-- Socket.IO client is served by the NestJS app -->
+    <script src="/socket.io/socket.io.js"></script>
+
+    <script>
+      const socketStatusEl = document.getElementById("socketStatus");
+      const waStatusEl = document.getElementById("waStatus");
+      const qrEl = document.getElementById("qr");
+      const errEl = document.getElementById("err");
+
+      function setError(msg) {
+        errEl.textContent = msg || "";
+      }
+
+      function setSocketStatus(value) {
+        socketStatusEl.textContent = value;
+      }
+
+      function setWhatsappStatus(value) {
+        waStatusEl.textContent = value || "unknown";
+      }
+
+      function renderQr(qrText) {
+        if (!qrText) {
+          qrEl.innerHTML =
+            '<span class="muted">Waiting for QR…</span>';
+          return;
+        }
+
+        qrEl.innerHTML =
+          '<div style="padding:8px;font-size:12px;word-break:break-all;">' +
+          '<div class="muted" style="margin-bottom:4px;">Raw QR string (you can paste this into any QR generator):</div>' +
+          "<code>" +
+          qrText +
+          "</code></div>";
+      }
+
+      // Connect to the /whatsapp namespace on the same host.
+      const socket = io("/whatsapp", {
+        transports: ["websocket", "polling"],
+        reconnection: true,
+        reconnectionAttempts: Infinity,
+        reconnectionDelay: 500,
+        reconnectionDelayMax: 5000,
+      });
+
+
+      socket.on("connect", () => {
+        setError("");
+        setSocketStatus("connected");
+      });
+
+      socket.on("disconnect", (reason) => {
+        setSocketStatus(`disconnected (${reason})`);
+      });
+
+      socket.on("connect_error", (err) => {
+        setSocketStatus("error");
+        setError(err?.message || String(err));
+      });
+
+      socket.on("status", (payload) => {
+        setWhatsappStatus(payload?.status);
+      });
+
+      socket.on("qr", (payload) => {
+        setError("");
+        renderQr(payload?.qr);
+      });
+    </script>
+  </body>
+</html>
+

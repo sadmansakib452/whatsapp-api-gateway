@@ -63,7 +63,26 @@ export class WhatsappService implements OnModuleInit, OnModuleDestroy {
       this.logger.log('WhatsApp client initialization requested');
     } catch (error) {
       this.status = 'ERROR';
-      this.logger.error('Failed to initialize WhatsApp client', error as Error);
+      const err = error as Error;
+      this.logger.error('Failed to initialize WhatsApp client', err);
+
+      // If a browser is already running for this session directory, we log the
+      // error and keep the Nest application running so that the API can still
+      // respond with a clear "WhatsApp not ready" status instead of crashing.
+      if (
+        err.message &&
+        err.message.includes(
+          'The browser is already running for',
+        )
+      ) {
+        this.logger.warn(
+          'WhatsApp browser session is already running. ' +
+            'Close the existing browser instance or remove the session directory, ' +
+            'then restart the backend to re-initialize WhatsApp.',
+        );
+        return;
+      }
+
       throw error;
     }
   }
