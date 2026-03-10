@@ -27,6 +27,12 @@ export class WhatsappService implements OnModuleInit, OnModuleDestroy {
   private readonly statusSubject = new Subject<WhatsappStatus>();
   private readonly qrSubject = new Subject<string>();
 
+  private activeSends = 0;
+  private readonly sendTimestamps: number[] = [];
+  private readonly MAX_CONCURRENT_SENDS = 3;
+  private readonly RATE_LIMIT_WINDOW_MS = 1000;
+  private readonly RATE_LIMIT_MAX = 10;
+
   async onModuleInit(): Promise<void> {
     try {
       this.logger.log('Initializing WhatsApp client');
@@ -150,13 +156,46 @@ export class WhatsappService implements OnModuleInit, OnModuleDestroy {
     }
 
     try {
+      this.applyRateLimit();
+
+      if (this.activeSends >= this.MAX_CONCURRENT_SENDS) {
+        this.logger.warn(
+          `Concurrent send limit reached: ${this.activeSends}/${this.MAX_CONCURRENT_SENDS}`,
+        );
+        throw new Error('WHATSAPP_BUSY');
+      }
+
+      this.activeSends += 1;
+
       const normalizedPhone = this.normalizePhoneNumber(phone);
       await this.client.sendMessage(normalizedPhone, message);
       this.logger.log(`Message sent to ${normalizedPhone}`);
     } catch (error) {
       this.logger.error('Failed to send WhatsApp message', error as Error);
       throw error;
+    } finally {
+      if (this.activeSends > 0) {
+        this.activeSends -= 1;
+      }
     }
+  }
+
+  private applyRateLimit(): void {
+    const now = Date.now();
+    const windowStart = now - this.RATE_LIMIT_WINDOW_MS;
+
+    while (this.sendTimestamps.length > 0 && this.sendTimestamps[0] < windowStart) {
+      this.sendTimestamps.shift();
+    }
+
+    if (this.sendTimestamps.length >= this.RATE_LIMIT_MAX) {
+      this.logger.warn(
+        `Rate limit exceeded: ${this.sendTimestamps.length}/${this.RATE_LIMIT_MAX} in ${this.RATE_LIMIT_WINDOW_MS}ms`,
+      );
+      throw new Error('WHATSAPP_RATE_LIMITED');
+    }
+
+    this.sendTimestamps.push(now);
   }
 
   private normalizePhoneNumber(phone: string): string {

@@ -95,6 +95,28 @@ export class WhatsappController {
         );
       }
 
+      if (errorMessage === 'WHATSAPP_RATE_LIMITED') {
+        throw new HttpException(
+          {
+            success: false,
+            message:
+              'Too many WhatsApp messages requested. Please slow down and try again.',
+          },
+          HttpStatus.TOO_MANY_REQUESTS,
+        );
+      }
+
+      if (errorMessage === 'WHATSAPP_BUSY') {
+        throw new HttpException(
+          {
+            success: false,
+            message:
+              'WhatsApp is currently processing other messages. Please try again shortly.',
+          },
+          HttpStatus.SERVICE_UNAVAILABLE,
+        );
+      }
+
       throw new HttpException(
         {
           success: false,
