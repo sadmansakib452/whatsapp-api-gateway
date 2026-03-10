@@ -199,7 +199,18 @@ export class WhatsappService implements OnModuleInit, OnModuleDestroy {
   }
 
   private normalizePhoneNumber(phone: string): string {
-    const trimmed = phone.replace(/\D/g, '');
+    const raw = String(phone ?? '').trim();
+
+    // whatsapp-web.js expects a WhatsApp "chat id" such as:
+    // - 8801XXXXXXXXX@c.us (individual)
+    // - <group-id>@g.us (group)
+    //
+    // For this assessment we support individual numbers by default.
+    if (raw.includes('@c.us') || raw.includes('@g.us')) {
+      return raw;
+    }
+
+    const trimmed = raw.replace(/\D/g, '');
 
     if (!trimmed) {
       throw new Error('INVALID_PHONE_NUMBER');
@@ -209,7 +220,7 @@ export class WhatsappService implements OnModuleInit, OnModuleDestroy {
     // you would apply proper E.164 formatting based on business rules.
     // WhatsApp Web typically expects a country code, so we rely on
     // the caller to provide the correct number format.
-    return trimmed;
+    return `${trimmed}@c.us`;
   }
 }
 

@@ -5,9 +5,11 @@ import {
   HttpException,
   HttpStatus,
   Post,
+  UseGuards,
 } from '@nestjs/common';
 import { WhatsappService } from './whatsapp.service';
 import { SendWhatsappMessageDto } from './dto/send-whatsapp-message.dto';
+import { WhatsappApiKeyGuard } from './guards/whatsapp-api-key.guard';
 
 @Controller('whatsapp')
 export class WhatsappController {
@@ -37,6 +39,7 @@ export class WhatsappController {
     }
   }
 
+  @UseGuards(WhatsappApiKeyGuard)
   @Post('send')
   async sendMessage(@Body() body: SendWhatsappMessageDto) {
     try {
