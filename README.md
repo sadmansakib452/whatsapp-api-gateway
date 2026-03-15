@@ -268,3 +268,5 @@ You can use this to explore other modules in the project (auth, admin, etc.), bu
 - **Prisma** (with Postgres) – data layer (used by other modules)
 - **BullMQ / Redis ready** – for background jobs (not strictly required for WhatsApp gateway)
 - **Docker** – containerized local environment
+
+ 
